@@ -1,0 +1,74 @@
+name: 🎬 Auto Upload Reels (Hindi)
+
+on:
+  schedule:
+    # Hindi: fires at :20 or :50 — offset from Tamil by 10 min
+    - cron: '20 1 * * *'      # IST  6:50 AM
+    - cron: '50 2 * * *'      # IST  8:20 AM
+    - cron: '20 5 * * *'      # IST 10:50 AM
+    - cron: '20 7 * * *'      # IST 12:50 PM
+    - cron: '50 8 * * *'      # IST  2:20 PM
+    - cron: '20 10 * * *'     # IST  3:50 PM
+    - cron: '50 11 * * *'     # IST  5:20 PM
+    - cron: '20 13 * * *'     # IST  6:50 PM
+    - cron: '50 14 * * *'     # IST  8:20 PM
+    - cron: '20 16 * * *'     # IST  9:50 PM
+    - cron: '50 17 * * *'     # IST 11:20 PM
+    - cron: '20 20 * * *'     # IST  1:50 AM
+  workflow_dispatch:
+
+concurrency:
+  group: hindi-uploader
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Run uploader
+        env:
+          IG_USERNAME:      ${{ secrets.IG_USERNAME }}
+          IG_PASSWORD:      ${{ secrets.IG_PASSWORD }}
+          IG_SESSION:       ${{ secrets.IG_SESSION }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          GDRIVE_API_KEY:   ${{ secrets.GDRIVE_API_KEY }}
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          WATERMARK_TEXT:    ${{ secrets.WATERMARK_TEXT }}
+          CONTENT_LANGUAGE:  ${{ secrets.CONTENT_LANGUAGE }}
+        run: python main.py
+
+      - name: Final save
+        if: always()
+        run: |
+          git config user.name "ReelBot"
+          git config user.email "bot@reelbot.com"
+          git pull --rebase || true
+          git add progress.json movies_log.json upload_history.json .gitignore 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "🤖 final save"
+          git push || true
