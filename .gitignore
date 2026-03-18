@@ -1,0 +1,11 @@
+
+session.json
+yt_token.json
+*.mp4
+/tmp/
+thumb_cache/
+reels/
+thumbnails/
+tmp_frames/
+detailed_log.txt
+current_movie.mp4
